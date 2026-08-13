@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>GraphWar - 数学函数炮战</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0a0a1a;--panel:#0e0e24;--border:#1e1e40;--text:#d0d0e0;--dim:#606080;--accent:#5a5aff;--red:#ff4455;--blue:#44aaff;--green:#44dd66;--yellow:#ffdd44}
+html,body{width:100%;height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);touch-action:manipulation;user-select:none;-webkit-user-select:none}
+#app{width:100%;height:100%;display:flex;flex-direction:column;position:relative}
+
+#titleScreen{position:absolute;inset:0;z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--bg);gap:14px;padding:20px}
+#titleScreen.hidden{display:none}
+#titleScreen h1{font-size:clamp(2rem,8vw,4rem);font-weight:800;background:linear-gradient(135deg,var(--red),#ff8844,var(--yellow),var(--green),var(--blue));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;letter-spacing:2px;text-align:center;line-height:1.1}
+#titleScreen .sub{font-size:clamp(0.85rem,2.5vw,1.2rem);color:var(--dim);text-align:center}
+.title-controls{display:flex;flex-direction:column;align-items:center;gap:12px}
+.player-select{display:flex;gap:10px}
+.player-select button{width:clamp(44px,12vw,64px);height:clamp(44px,12vw,64px);border-radius:12px;border:2px solid var(--border);background:var(--panel);color:var(--text);font-size:clamp(1.2rem,4vw,1.8rem);font-weight:700;cursor:pointer;transition:all .2s}
+.player-select button.active{border-color:var(--accent);background:#1a1a4a;box-shadow:0 0 20px rgba(90,90,255,.3)}
+.btn-pri{padding:12px 48px;border-radius:12px;border:none;background:linear-gradient(135deg,var(--accent),#7a4aff);color:#fff;font-size:clamp(1rem,3.5vw,1.4rem);font-weight:700;cursor:pointer;transition:all .2s;box-shadow:0 0 30px rgba(90,90,255,.2)}
+.btn-pri:hover{transform:scale(1.05);box-shadow:0 0 40px rgba(90,90,255,.4)}
+.btn-pri:active{transform:scale(0.97)}
+
+#gameScreen{flex:1;display:flex;flex-direction:column;min-height:0;position:relative}
+#gameScreen.hidden{display:none}
+
+#topBar{display:flex;align-items:center;justify-content:space-between;padding:4px 10px;background:var(--panel);border-bottom:1px solid var(--border);flex-shrink:0;gap:6px;min-height:40px;flex-wrap:wrap}
+#topBar .title{font-weight:700;font-size:clamp(0.8rem,2vw,1rem);flex-shrink:0}
+.turn-info{display:flex;align-items:center;gap:6px;font-size:clamp(0.75rem,2vw,0.95rem)}
+.dot{width:12px;height:12px;border-radius:50%;flex-shrink:0;border:2px solid rgba(255,255,255,.15)}
+.round-info{color:var(--dim);font-size:clamp(0.7rem,1.8vw,0.85rem)}
+.timer{color:var(--yellow);font-weight:700;font-size:clamp(0.8rem,2.2vw,1rem);min-width:40px;text-align:center}
+#canvasWrap{flex:1;min-height:0;position:relative;overflow:hidden;background:var(--bg)}
+#gameCanvas{width:100%;height:100%;display:block}
+#statusOv{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none;font-size:clamp(1.2rem,5vw,2.4rem);font-weight:700;text-shadow:0 0 20px currentColor;opacity:0;transition:opacity .3s;z-index:10}
+#statusOv.show{opacity:1}
+#hitFlash{position:absolute;inset:0;pointer-events:none;z-index:5;opacity:0;transition:opacity .15s}
+
+#controls{flex-shrink:0;padding:6px 10px 8px;background:var(--panel);border-top:1px solid var(--border);display:flex;flex-direction:column;gap:5px}
+.input-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.input-row label{font-size:clamp(0.8rem,2vw,0.95rem);font-weight:600;font-family:monospace;flex-shrink:0}
+#funcIn{flex:1;min-width:80px;padding:6px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:clamp(0.85rem,2.2vw,1rem);font-family:monospace;outline:none;transition:border-color .2s;height:36px}
+#funcIn:focus{border-color:var(--accent);box-shadow:0 0 15px rgba(90,90,255,.15)}
+#funcIn:disabled{opacity:.4}
+.deriv-select{display:flex;gap:3px;flex-shrink:0}
+.deriv-btn{padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:clamp(0.65rem,1.6vw,0.8rem);cursor:pointer;transition:all .1s;white-space:nowrap;height:36px}
+.deriv-btn.active{border-color:var(--accent);background:#1a1a4a}
+.deriv-btn:hover{border-color:var(--accent)}
+.btn-fire{height:36px;padding:0 16px;border-radius:6px;border:none;background:linear-gradient(135deg,var(--accent),#7a4aff);color:#fff;font-size:clamp(0.8rem,2vw,0.95rem);font-weight:700;cursor:pointer;transition:all .15s;flex-shrink:0;white-space:nowrap}
+.btn-fire:hover{filter:brightness(1.15)}
+.btn-fire:active{transform:scale(0.96)}
+.btn-fire:disabled{opacity:.4;cursor:not-allowed}
+
+.math-btns{display:flex;flex-wrap:wrap;gap:3px;justify-content:center}
+.math-btn{min-width:clamp(30px,7vw,40px);height:clamp(28px,7vw,38px);border-radius:5px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:clamp(0.65rem,1.7vw,0.85rem);cursor:pointer;transition:all .1s;display:flex;align-items:center;justify-content:center;font-family:monospace;padding:0 5px;touch-action:manipulation}
+.math-btn:hover{background:#1a1a3a;border-color:var(--accent)}
+.math-btn:active{background:var(--accent);color:#fff;transform:scale(0.93)}
+.math-btn.fn{color:#ff8844;font-size:clamp(0.6rem,1.5vw,0.75rem)}
+.math-btn.op{color:var(--yellow)}
+.math-btn.cst{color:var(--green)}
+.math-btn.del{color:var(--red)}
+
+#healthBar{display:flex;gap:clamp(8px,3vw,20px);justify-content:center;padding:3px 10px 4px;flex-shrink:0;flex-wrap:wrap;background:var(--panel);border-top:1px solid var(--border);min-height:26px}
+.hp-item{display:flex;align-items:center;gap:5px;font-size:clamp(0.65rem,1.6vw,0.8rem);flex-shrink:0}
+.hp-item .nd{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.hp-bar{width:clamp(50px,15vw,100px);height:6px;border-radius:3px;background:#1a1a30;overflow:hidden}
+.hp-fill{height:100%;border-radius:3px;transition:width .5s ease}
+.hp-txt{font-variant-numeric:tabular-nums;min-width:24px;text-align:right;color:var(--dim)}
+
+#resultScreen{position:absolute;inset:0;z-index:100;display:none;flex-direction:column;align-items:center;justify-content:center;background:rgba(10,10,26,.95);gap:16px;padding:20px;backdrop-filter:blur(8px)}
+#resultScreen.show{display:flex}
+#resultScreen .wn{font-size:clamp(1.8rem,7vw,3.5rem);font-weight:800;text-align:center}
+#resultScreen .ws{font-size:clamp(0.9rem,3vw,1.3rem);color:var(--dim);text-align:center}
+#helpModal{position:absolute;inset:0;z-index:200;display:none;flex-direction:column;background:rgba(10,10,26,.92);padding:20px;backdrop-filter:blur(8px);overflow-y:auto}
+#helpModal.show{display:flex}
+#helpModal h2{font-size:1.3rem;margin-bottom:12px}
+.help-sec{margin-bottom:14px}
+.help-sec h3{font-size:1rem;color:var(--accent);margin-bottom:6px}
+.help-sec p,.help-sec li{font-size:0.9rem;color:var(--dim);line-height:1.6}
+.help-sec ul{padding-left:20px}
+.help-sec code{background:#1a1a3a;padding:2px 6px;border-radius:4px;font-family:monospace;color:#ff8844;font-size:0.85rem}
+.example-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:6px}
+.example-item{padding:6px 10px;background:#1a1a30;border-radius:6px;border:1px solid var(--border);font-family:monospace;font-size:0.85rem;color:var(--text)}
+.btn-close{position:absolute;top:12px;right:12px;width:36px;height:36px;border-radius:8px;border:1px solid var(--border);background:var(--panel);color:var(--text);cursor:pointer;font-size:18px}
+@media(max-width:480px){.math-btn{min-width:28px;height:28px;font-size:0.6rem}.hp-bar{width:40px}#topBar{padding:3px 6px;min-height:36px}.deriv-btn{padding:3px 7px;height:30px;font-size:0.6rem}}
+</style>
+</head><body>
+<div id="app">
+<div id="titleScreen">
+<h1>GraphWar</h1>
+<p class="sub">⚡ 数学函数炮战 ⚡</p>
+<div class="title-controls">
+<label>👥 选择人数</label>
+<div class="player-select">
+<button data-count="2" class="active">2</button>
+<button data-count="3">3</button>
+<button data-count="4">4</button>
+</div>
+<button class="btn-pri" id="startBtn">🚀 开战</button>
+</div>
+<p style="color:var(--dim);font-size:clamp(0.7rem,2vw,0.85rem);margin-top:8px;text-align:center;max-width:420px">输入函数 y=f(x) 决定炮弹轨迹，绕过障碍击中敌军！每回合限时60秒。</p>
+</div>
+
+<div id="gameScreen" class="hidden">
+<div id="topBar">
+<span class="title">🎯 GraphWar</span>
+<span class="turn-info"><span class="dot" id="turnDot"></span><span id="turnName">-</span></span>
+<span class="timer" id="timerDisplay">60</span>
+<span class="round-info" id="roundInfo">回合 1</span>
+<button class="btn-pri" style="padding:4px 12px;font-size:clamp(0.65rem,1.6vw,0.8rem)" id="helpBtn">❓</button>
+</div>
+<div id="canvasWrap">
+<canvas id="gameCanvas"></canvas>
+<div id="statusOv"></div>
+<div id="hitFlash"></div>
+</div>
+<div id="controls">
+<div class="input-row">
+<label>y =</label>
+<input type="text" id="funcIn" placeholder="x^2, sin(x), 2*x+1 ..." autocomplete="off" spellcheck="false">
+<div class="deriv-select">
+<button class="deriv-btn active" data-d="0">f(x)</button>
+<button class="deriv-btn" data-d="1">f'(x)</button>
+<button class="deriv-btn" data-d="2">f''(x)</button>
+</div>
+<button class="btn-fire" id="fireBtn">🚀 发射</button>
+</div>
+<div class="math-btns" id="mathBtns"></div>
+</div>
+<div id="healthBar"></div>
+</div>
+
+<div id="resultScreen">
+<div style="font-size:3rem;margin-bottom:4px" id="resultEmoji">🏆</div>
+<div class="wn" id="winnerName"></div>
+<p class="ws" id="winnerSub">恭喜获胜！</p>
+<button class="btn-pri" id="restartBtn" style="margin-top:12px">🔄 再来一局</button>
+</div>
+
+<div id="helpModal">
+<button class="btn-close" id="closeHelpBtn">✕</button>
+<h2>📖 游戏帮助</h2>
+<div class="help-sec"><h3>🎯 目标</h3><p>输入函数 y = f(x) 控制炮弹轨迹，从你所在位置发射，沿函数曲线飞行。绕过或摧毁障碍物，击中敌军！每回合60秒。</p></div>
+<div class="help-sec"><h3>⌨️ 输入与导数</h3><p>输入一个函数，可选择：</p><ul>
+<li><b>f(x)</b> — 原函数，炮弹直接沿 y=f(x) 飞行</li>
+<li><b>f'(x)</b> — 一阶导数，炮弹沿斜率曲线飞行</li>
+<li><b>f''(x)</b> — 二阶导数，炮弹沿曲率曲线飞行</li>
+</ul><p>这允许一个函数产生三种不同轨迹，增加策略性。</p></div>
+<div class="help-sec"><h3>🧱 障碍物</h3><p>地图上分布着可破坏的矩形障碍物。炮弹经过障碍物会将其摧毁，但你必须让函数绕过障碍击中敌人。障碍物可以帮你预判弹道位置。</p></div>
+<div class="help-sec"><h3>💡 常用函数</h3><div class="example-grid">
+<div class="example-item">y = k*x + b — 直线</div>
+<div class="example-item">K/(1+exp(-a*(x+c))) — S型</div>
+<div class="example-item">K/(1+(a*(x+c))^2) — 尖峰</div>
+<div class="example-item">0.5*k*(abs(x-a)-abs(x-b)) — 斜弯</div>
+<div class="example-item">sin(n*x) — 三角函数轰炸</div>
+<div class="example-item">x^2，x^3 抛物线</div>
+</div></div>
+<div class="help-sec"><h3>💥 机制</h3><p>炮弹从你的 x 位置向右发射。曲线越靠近敌人伤害越高，每次 25 HP。100血归零淘汰。一发射击可命中多名敌人！</p></div>
+</div>
+</div>
+
+<script>
+// ===== CONFIG =====
+var CFG = {
+  xMin:-10, xMax:10, yMin:-8, yMax:8,
+  hitThreshold:0.7, damage:25, maxHealth:100,
+  previewAlpha:0.3, bulletSize:6, playerRad:10,
+  turnTime:60, // seconds
+  animDuration:1800, // ms
+  colors:["#ff4455","#44aaff","#44dd66","#ffdd44"],
+  names:["赤队","蓝队","绿队","黄队"],
+  emojis:["🔴","🔵","🟢","🟡"],
+  maxObstacles:8
+};
+
+// ===== STATE =====
+var S = {
+  screen:"title", players:[], turnIdx:0, round:1,
+  phase:"input", numPlayers:2, derivMode:0, // 0=f, 1=f', 2=f''
+  animT:0, hits:[], evalFn:null, prevFn:null,
+  obstacles:[], timer:60, timerId:null, deadPlayers:0
+};
+
+// ===== DOM =====
+var D = {};
+function iD(){
+  D.can=$("#gameCanvas");D.ctx=D.can.getContext("2d");
+  D.ti=$("#titleScreen");D.ga=$("#gameScreen");D.re=$("#resultScreen");
+  D.td=$("#turnDot");D.tn=$("#turnName");D.ri=$("#roundInfo");
+  D.fi=$("#funcIn");D.fb=$("#fireBtn");D.hb=$("#healthBar");
+  D.so=$("#statusOv");D.hf=$("#hitFlash");D.hm=$("#helpModal");
+  D.hb2=$("#helpBtn");D.mb=$("#mathBtns");D.wn=$("#winnerName");
+  D.ws=$("#winnerSub");D.tm=$("#timerDisplay");
+}
+function $(s){return document.querySelector(s);}
+function $$(s){return document.querySelectorAll(s);}
+
+// ===== MATH =====
+function compile(expr){
+  if(!expr||!expr.trim())return null;
+  var s=expr.trim();
+  var reps=[
+    ["asin","Math.asin"],["acos","Math.acos"],["atan","Math.atan"],
+    ["sinh","Math.sinh"],["cosh","Math.cosh"],["tanh","Math.tanh"],
+    ["sin","Math.sin"],["cos","Math.cos"],["tan","Math.tan"],
+    ["sqrt","Math.sqrt"],["cbrt","Math.cbrt"],
+    ["abs","Math.abs"],["floor","Math.floor"],["ceil","Math.ceil"],
+    ["log2","Math.log2"],["log","Math.log"],["exp","Math.exp"],
+    ["sign","Math.sign"]
+  ];
+  for(var i=0;i<reps.length;i++)
+    s=s.replace(new RegExp("\b"+reps[i][0]+"\b","g"), reps[i][1]);
+  s=s.replace(/pi/gi,"Math.PI");
+  s=s.replace(/e/g,"Math.E");
+  s=s.replace(/\^/g,"**");
+  s=s.replace(/(\d)([a-zA-Z(])/g,"$1*$2");
+  s=s.replace(/\)([a-zA-Z(])/g,")*$1");
+  s=s.replace(/([a-zA-Z)])(\d)/g,"$1*$2");
+  try{
+    var fn=new Function("x","return ("+s+")");
+    fn(0);fn(1);fn(-1);
+    return fn;
+  }catch(e){return null;}
+}
+
+function derivative(f,x,h){
+  h=h||0.0001;
+  return (f(x+h)-f(x-h))/(2*h);
+}
+
+function deriv2(f,x,h){
+  h=h||0.0001;
+  return (f(x+h)-2*f(x)+f(x-h))/(h*h);
+}
+
+function getTrajectoryFn(f,mode){
+  if(mode===0)return f;
+  if(mode===1)return function(x){return derivative(f,x);};
+  return function(x){return deriv2(f,x);};
+}
+
+// ===== COORDS =====
+var W=0,H=0,DPR=1;
+function resizeC(){
+  var r=D.can.parentElement.getBoundingClientRect();
+  DPR=window.devicePixelRatio||1;
+  var w=Math.round(r.width),h=Math.round(r.height);
+  if(w<1||h<1)return;
+  D.can.width=w*DPR;D.can.height=h*DPR;
+  D.can.style.width=w+"px";D.can.style.height=h+"px";
+  W=w;H=h;D.ctx.setTransform(DPR,0,0,DPR,0,0);
+}
+function mX(x){return ((x-CFG.xMin)/(CFG.xMax-CFG.xMin))*W;}
+function mY(y){return H-((y-CFG.yMin)/(CFG.yMax-CFG.yMin))*H;}
+
+// ===== OBSTACLES =====
+function genObs(count){
+  var obs=[];
+  for(var i=0;i<count;i++){
+    var x=(Math.random()*12)-6;
+    var y=(Math.random()*10)-5;
+    var w=0.5+Math.random()*0.8;
+    var h=0.3+Math.random()*0.5;
+    obs.push({x:x,y:y,w:w,h:h,alive:true});
+  }
+  return obs;
+}
+
+function drawObs(ctx){
+  for(var i=0;i<S.obstacles.length;i++){
+    var o=S.obstacles[i];
+    if(!o.alive)continue;
+    var px=mX(o.x),py=mY(o.y);
+    var pw=(o.w/(CFG.xMax-CFG.xMin))*W;
+    var ph=(o.h/(CFG.yMax-CFG.yMin))*H;
+    ctx.fillStyle="#2a2a45";
+    ctx.fillRect(px,py-pw,pw,ph);
+    ctx.strokeStyle="#3a3a65";
+    ctx.lineWidth=2;
+    ctx.strokeRect(px,py-pw,pw,ph);
+    // Cross-hatch pattern
+    ctx.strokeStyle="#3a3a6540";
+    ctx.lineWidth=1;
+    ctx.beginPath();
+    ctx.moveTo(px,py-pw);ctx.lineTo(px+pw,py-pw+ph);
+    ctx.moveTo(px+pw,py-pw);ctx.lineTo(px,py-pw+ph);
+    ctx.stroke();
+  }
+}
+
+function checkObsHit(x,y){
+  for(var i=0;i<S.obstacles.length;i++){
+    var o=S.obstacles[i];
+    if(!o.alive)continue;
+    if(x>=o.x && x<=o.x+o.w && y>=o.y-o.h && y<=o.y+o.h){
+      o.alive=false;
+      return true;
+    }
+  }
+  return false;
+}
+
+// ===== PLAYERS =====
+function initP(c){
+  var used=new Set(),pls=[];
+  for(var i=0;i<c;i++){
+    var x,y,t=0;
+    do{
+      x=Math.round((Math.random()*14-7)*10)/10;
+      y=Math.round((Math.random()*10-5)*10)/10;
+      t++;
+    }while(t<200&&hC(used,x,y,2));
+    used.add(x+","+y);
+    pls.push({x:x,y:y,hp:CFG.maxHealth,maxHp:CFG.maxHealth,color:CFG.colors[i],name:CFG.names[i],emoji:CFG.emojis[i],idx:i,alive:true});
+  }
+  return pls;
+}
+function hC(s,x,y,m){for(var k of s){var p=k.split(",");if(Math.hypot(Number(p[0])-x,Number(p[1])-y)<m)return 1;}return 0;}
+
+// ===== GAME =====
+function startG(num){
+  S.numPlayers=num;S.round=1;S.deadPlayers=0;
+  S.players=initP(num);
+  S.obstacles=genObs(CFG.maxObstacles);
+  S.turnIdx=0;S.phase="input";S.derivMode=0;
+  S.evalFn=null;S.prevFn=null;S.animT=0;S.hits=[];S.screen="game";
+  D.ti.classList.add("hidden");
+  D.ga.classList.remove("hidden");
+  D.re.classList.remove("show");
+  D.fi.value="";D.fi.disabled=false;D.fb.disabled=false;D.fb.textContent="🚀 发射";
+  setTimeout(function(){resizeC();render();},30);
+  buildMB();updateUI();focusI();
+
+  // Derivative buttons
+  var dbs=document.querySelectorAll(".deriv-btn");
+  for(var i=0;i<dbs.length;i++)dbs[i].classList.toggle("active",i===0);
+
+  startTimer();
+}
+function startTimer(){
+  clearInterval(S.timerId);
+  S.timer=CFG.turnTime;D.tm.textContent=S.timer;
+  S.timerId=setInterval(function(){
+    S.timer--;
+    D.tm.textContent=Math.max(0,S.timer);
+    if(S.timer<=0 && S.phase==="input"){
+      // Auto-fire if function exists
+      if(S.evalFn)fire();
+      else {
+        // Time's up, force next turn
+        D.tm.textContent="0";
+        showStatus("⏰ 超时!","#888");
+        setTimeout(function(){clearInterval(S.timerId);nextTurn();},1000);
+      }
+    }
+  },1000);
+}
+function focusI(){
+  if(!("ontouchstart"in window))setTimeout(function(){D.fi.focus();},100);
+}
+
+function updateUI(){
+  var pl=S.players[S.turnIdx];
+  if(pl){D.td.style.background=pl.color;D.tn.textContent=pl.emoji+" "+pl.name;D.tn.style.color=pl.color;}
+  D.ri.textContent="回合 "+S.round;
+  D.fi.disabled=S.phase!=="input";D.fb.disabled=S.phase!=="input";
+  D.hb.innerHTML="";
+  for(var i=0;i<S.players.length;i++){
+    var p=S.players[i];
+    if(!p.alive)continue;
+    var pct=Math.max(0,p.hp/p.maxHp*100);
+    var d=document.createElement("div");d.className="hp-item";
+    d.innerHTML='<span class="nd" style="background:'+p.color+'"></span><span>'+p.emoji+'</span><div class="hp-bar"><div class="hp-fill" style="width:'+pct+'%;background:'+p.color+'"></div></div><span class="hp-txt">'+p.hp+'</span>';
+    D.hb.appendChild(d);
+  }
+}
+
+function alv(){var r=[];for(var i=0;i<S.players.length;i++)if(S.players[i].alive)r.push(S.players[i]);return r;}
+
+function nextTurn(){
+  clearInterval(S.timerId);
+  S._animStart=0;
+  var n=S.turnIdx,a=alv();
+  if(a.length<=1){setTimeout(function(){showR(a[0]||null);},400);return;}
+  var t=0;
+  do{n=(n+1)%S.players.length;t++;}while(t<S.players.length&&(!S.players[n].alive||n===S.turnIdx));
+  S.turnIdx=n;
+  if(S.turnIdx===0)S.round++;
+  S.phase="input";S.evalFn=null;S.prevFn=null;S.animT=0;S.hits=[];S.derivMode=0;
+  D.fi.value="";D.fi.disabled=false;D.fb.disabled=false;D.fb.textContent="🚀 发射";
+  // Reset deriv buttons
+  var dbs=document.querySelectorAll(".deriv-btn");
+  for(var i=0;i<dbs.length;i++)dbs[i].classList.toggle("active",i===0);
+  updateUI();focusI();startTimer();render();
+}
+
+// ===== FIRE =====
+function fire(){
+  if(S.phase!=="input"||!S.evalFn)return;
+  if(W<1||H<1)resizeC();
+  clearInterval(S.timerId);
+  S.trajFn=getTrajectoryFn(S.evalFn,S.derivMode);S.phase="animating";S.animT=0;S.hits=[];S._animStart=0;
+  D.fi.disabled=true;D.fb.disabled=true;D.fb.textContent="▶ 飞行中...";
+  beep(520,0.08,0.1);
+  requestAnimationFrame(tick);
+}
+
+function tick(ts){
+  if(!S._animStart)S._animStart=ts;
+  S.animT=Math.min(1,(ts-S._animStart)/CFG.animDuration);
+  if(S.evalFn){
+    var pl=S.players[S.turnIdx];
+    var trajFn=S.trajFn||getTrajectoryFn(S.evalFn,S.derivMode);
+    // Bullet travels from player.x to the right
+    var xStart=pl.x;
+    var xEnd=CFG.xMax;
+    var curX=xStart+(xEnd-xStart)*S.animT;
+    if(S.animT>0){
+      try{
+        var curY=trajFn(curX);
+        if(isFinite(curY)){
+          // Check obstacle hit
+          checkObsHit(curX,curY);
+          // Check player hit
+          for(var i=0;i<S.players.length;i++){
+            var p=S.players[i];
+            if(!p.alive||p.idx===S.turnIdx)continue;
+            var ah=false;
+            for(var h=0;h<S.hits.length;h++){if(S.hits[h].idx===p.idx){ah=true;break;}}
+            if(ah)continue;
+            var dist=Math.hypot(p.x-curX,p.y-curY);
+            if(dist<CFG.hitThreshold){
+              S.hits.push({idx:p.idx,dist:dist});
+              var dm=Math.round(CFG.damage*(1-dist/CFG.hitThreshold*0.5));
+              p.hp=Math.max(0,p.hp-dm);
+              D.hf.style.background=p.color+"40";D.hf.style.opacity="1";
+              setTimeout(function(){D.hf.style.opacity="0";},250);
+              if(p.hp<=0){
+                p.alive=false;S.deadPlayers++;
+                beep(220,0.3,0.2);
+                showStatus("💥 "+p.emoji+" "+p.name+" 被淘汰!",p.color);
+              }else{
+                beep(380,0.12,0.15);
+                showStatus("💥 命中 "+p.emoji+"! -"+dm+"HP",p.color);
+              }
+              updateUI();
+            }
+          }
+        }
+      }catch(e){}
+    }
+  }
+  render();
+  if(S.animT<1)requestAnimationFrame(tick);
+  else finish();
+}
+
+function finish(){
+  S._animStart=0;
+  var a=alv();
+  if(a.length<=1){setTimeout(function(){showR(a[0]||null);},600);return;}
+  if(S.hits.length===0)showStatus("❌ 未命中","#888");
+  setTimeout(function(){
+    D.so.classList.remove("show");
+    // Reset timer display before next turn
+    D.tm.textContent=CFG.turnTime;
+    nextTurn();
+  },1200);
+}
+
+function showStatus(t,c){D.so.textContent=t;D.so.style.color=c||"#fff";D.so.classList.add("show");setTimeout(function(){D.so.classList.remove("show");},1500);}
+
+function showR(w){
+  clearInterval(S.timerId);
+  S.screen="result";D.ga.classList.add("hidden");D.re.classList.add("show");
+  if(w){
+    D.wn.textContent=w.emoji+" "+w.name;D.wn.style.color=w.color;
+    D.ws.textContent="🎉 恭喜获胜!";document.getElementById("resultEmoji").textContent="🏆";
+    beep(660,0.15,0.1);setTimeout(function(){beep(880,0.15,0.1);},200);
+    setTimeout(function(){beep(1100,0.3,0.15);},400);
+  }else{
+    D.wn.textContent="平局";D.wn.style.color="#888";D.ws.textContent="所有人都被淘汰了!";
+    document.getElementById("resultEmoji").textContent="💀";
+  }
+}
+
+// ===== RENDER =====
+function render(){
+  var ctx=D.ctx;
+  if(!ctx||W<1||H<1)return;
+  ctx.fillStyle="#0a0a1a";ctx.fillRect(0,0,W,H);
+  // Grid
+  ctx.strokeStyle="#151530";ctx.lineWidth=1;
+  for(var x=Math.ceil(CFG.xMin);x<=CFG.xMax;x++){if(x===0)continue;ctx.beginPath();ctx.moveTo(mX(x),0);ctx.lineTo(mX(x),H);ctx.stroke();}
+  for(var y=Math.ceil(CFG.yMin);y<=CFG.yMax;y++){if(y===0)continue;ctx.beginPath();ctx.moveTo(0,mY(y));ctx.lineTo(W,mY(y));ctx.stroke();}
+  // Axes
+  ctx.strokeStyle="#2a2a50";ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(mX(0),0);ctx.lineTo(mX(0),H);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(0,mY(0));ctx.lineTo(W,mY(0));ctx.stroke();
+  // Labels
+  var fs=Math.max(9,Math.min(12,W/65));
+  ctx.fillStyle="#505070";ctx.font=fs+"px sans-serif";ctx.textAlign="center";ctx.textBaseline="top";
+  for(var x=Math.ceil(CFG.xMin);x<=CFG.xMax;x++){if(x===0||x%2!==0)continue;ctx.fillText(x,mX(x),mY(0)+3);}
+  ctx.textAlign="right";ctx.textBaseline="middle";
+  for(var y=Math.ceil(CFG.yMin);y<=CFG.yMax;y++){if(y===0||y%2!==0)continue;ctx.fillText(y,mX(0)-5,mY(y));}
+  ctx.fillStyle="#707090";ctx.textAlign="center";ctx.textBaseline="top";ctx.fillText("0",mX(0)+5,mY(0)+3);
+  // Obstacles
+  drawObs(ctx);
+  // Derivative mode label
+  var dlabels=["f(x)","f'(x)","f''(x)"];
+  ctx.fillStyle="#808090";ctx.font="bold "+(fs+1)+"px sans-serif";ctx.textAlign="left";ctx.textBaseline="top";
+  ctx.fillText("模式: "+dlabels[S.derivMode]+"  "+D.tm.textContent+"s",8,8);
+  // Preview
+  if(S.phase==="input"&&S.prevFn){
+    var trajFn=getTrajectoryFn(S.prevFn,S.derivMode);
+    drawG(ctx,trajFn,S.players[S.turnIdx].color,CFG.previewAlpha,false,1);
+  }
+  // Firing
+  if(S.phase==="animating"&&S.evalFn){
+    var trajFn=getTrajectoryFn(S.evalFn,S.derivMode);
+    drawG(ctx,trajFn,S.players[S.turnIdx].color,1,true,S.animT);
+  }
+  // Players
+  var pr=CFG.playerRad*(W/500);
+  for(var i=0;i<S.players.length;i++){
+    var pl=S.players[i];if(!pl.alive)continue;
+    var px=mX(pl.x),py=mY(pl.y);
+    var gr=ctx.createRadialGradient(px,py,0,px,py,pr*3);
+    gr.addColorStop(0,pl.color+"60");gr.addColorStop(1,pl.color+"00");
+    ctx.fillStyle=gr;ctx.beginPath();ctx.arc(px,py,pr*3,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle=pl.color;ctx.beginPath();ctx.arc(px,py,pr,0,Math.PI*2);ctx.fill();
+    ctx.strokeStyle="#fff3";ctx.lineWidth=1.5;ctx.stroke();
+    ctx.fillStyle="#d0d0e0";ctx.font="bold "+Math.max(9,Math.min(13,W/60))+"px sans-serif";
+    ctx.textAlign="center";ctx.textBaseline="bottom";
+    ctx.fillText(pl.emoji+" "+pl.name,px,py-pr-3);
+  }
+  // Active ring
+  if(S.phase==="input"){
+    var pl=S.players[S.turnIdx];if(pl&&pl.alive){
+      ctx.strokeStyle=pl.color+"80";ctx.lineWidth=2;ctx.setLineDash([4,6]);
+      ctx.beginPath();ctx.arc(mX(pl.x),mY(pl.y),pr+7,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);
+    }
+  }
+}
+
+function drawG(ctx,fn,color,alpha,bt,t){
+  var steps=400,pl=S.players[S.turnIdx];
+  var x0=pl.x,x1=CFG.xMax,endX=x0+(x1-x0)*t,pts=[],bp=null;
+  for(var i=0;i<=steps;i++){
+    var x=x0+(x1-x0)*(i/steps);
+    if(bt&&x>endX)break;
+    try{var y=fn(x);if(!isFinite(y))continue;pts.push({x:x,y:y});if(bt&&i===Math.round(steps*Math.min(1,t)))bp={x:x,y:y};}catch(e){}
+  }
+  if(pts.length<2){drawB(ctx,bp,color);return;}
+  var ah=Math.round(alpha*255).toString(16).padStart(2,"0");
+  ctx.strokeStyle=color+ah;ctx.lineWidth=bt?3:2;ctx.lineCap="round";ctx.lineJoin="round";ctx.beginPath();
+  for(var i=0;i<pts.length;i++){var px=mX(pts[i].x),py=mY(pts[i].y);i===0?ctx.moveTo(px,py):ctx.lineTo(px,py);}
+  ctx.stroke();
+  if(bt){
+    ctx.shadowColor=color;ctx.shadowBlur=12;ctx.strokeStyle=color+"40";ctx.lineWidth=6;ctx.beginPath();
+    for(var i=0;i<pts.length;i++){var px=mX(pts[i].x),py=mY(pts[i].y);i===0?ctx.moveTo(px,py):ctx.lineTo(px,py);}
+    ctx.stroke();ctx.shadowBlur=0;
+  }
+  drawB(ctx,bp,color);
+  // Draw start marker at player position
+  if(pts.length>0){
+    ctx.fillStyle=color+"80";
+    ctx.beginPath();ctx.arc(mX(pts[0].x),mY(pts[0].y),3*(W/500),0,Math.PI*2);ctx.fill();
+  }
+}
+function drawB(ctx,p,color){
+  if(!p||!isFinite(p.x)||!isFinite(p.y))return;
+  var px=mX(p.x),py=mY(p.y),sz=CFG.bulletSize*(W/500);
+  var gr=ctx.createRadialGradient(px,py,0,px,py,sz*4);
+  gr.addColorStop(0,color);gr.addColorStop(0.3,color+"c0");gr.addColorStop(1,color+"00");
+  ctx.fillStyle=gr;ctx.beginPath();ctx.arc(px,py,sz*4,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle="#fff";ctx.beginPath();ctx.arc(px,py,sz*0.5,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle=color;ctx.beginPath();ctx.arc(px,py,sz*0.8,0,Math.PI*2);ctx.fill();
+}
+
+// ===== INPUT =====
+var _pt=null;
+function onIn(){
+  clearTimeout(_pt);
+  // Also update timer display
+  _pt=setTimeout(function(){
+    var v=D.fi.value.trim();
+    if(!v){S.prevFn=null;S.evalFn=null;D.fi.style.borderColor="var(--border)";render();return;}
+    var fn=compile(v);
+    if(fn){S.prevFn=fn;S.evalFn=fn;D.fi.style.borderColor="var(--border)";}
+    else{S.prevFn=null;S.evalFn=null;D.fi.style.borderColor="#ff445580";}
+    render();
+  },150);
+}
+
+// ===== MATH BUTTONS =====
+function buildMB(){
+  var btns=[
+    {l:"x",c:"op"},{l:"^",c:"op"},{l:"(",c:"op"},{l:")",c:"op"},
+    {l:"sin",c:"fn"},{l:"cos",c:"fn"},{l:"tan",c:"fn"},
+    {l:"sqrt",c:"fn"},{l:"abs",c:"fn"},{l:"log",c:"fn"},{l:"exp",c:"fn"},
+    {l:"7",c:""},{l:"8",c:""},{l:"9",c:""},{l:"+",c:"op"},{l:"-",c:"op"},
+    {l:"4",c:""},{l:"5",c:""},{l:"6",c:""},{l:"*",c:"op"},{l:"/",c:"op"},
+    {l:"1",c:""},{l:"2",c:""},{l:"3",c:""},{l:"π",c:"cst"},{l:"e",c:"cst"},
+    {l:"0",c:""},{l:".",c:""},{l:"⌫",c:"del"},{l:"C",c:"del"}
+  ];
+  D.mb.innerHTML="";
+  for(var i=0;i<btns.length;i++){
+    var b=btns[i];
+    var el=document.createElement("button");
+    el.className="math-btn"+(b.c?" "+b.c:"");
+    el.textContent=b.l;
+    el.addEventListener("click",(function(v){return function(){mC(v);};})(b.l));
+    if(b.l==="⌫"){
+      var hi=null;
+      el.addEventListener("pointerdown",function(){hi=setInterval(function(){D.fi.value=D.fi.value.slice(0,-1);D.fi.dispatchEvent(new Event("input"));},80);});
+      el.addEventListener("pointerup",function(){clearInterval(hi);});
+      el.addEventListener("pointerleave",function(){clearInterval(hi);});
+    }
+    D.mb.appendChild(el);
+  }
+}
+function mC(v){
+  var inp=D.fi;if(S.phase!=="input")return;
+  if(v==="⌫"){inp.value=inp.value.slice(0,-1);}
+  else if(v==="C"){inp.value="";}
+  else{var s=inp.selectionStart||inp.value.length,e=inp.selectionEnd||s;inp.value=inp.value.slice(0,s)+v+inp.value.slice(e);inp.setSelectionRange(s+v.length,s+v.length);}
+  inp.focus();inp.dispatchEvent(new Event("input"));
+}
+
+// ===== SOUND =====
+var actx=null;
+function beep(f,d,v){try{if(!actx)actx=new(window.AudioContext||window.webkitAudioContext)();var o=actx.createOscillator(),g=actx.createGain();o.connect(g);g.connect(actx.destination);o.frequency.value=f;o.type="sine";g.gain.setValueAtTime(v,actx.currentTime);g.gain.exponentialRampToValueAtTime(0.001,actx.currentTime+d);o.start(actx.currentTime);o.stop(actx.currentTime+d);}catch(e){}}
+
+// ===== EVENTS =====
+function bindE(){
+  var pb=document.querySelectorAll(".player-select button");
+  for(var i=0;i<pb.length;i++){pb[i].addEventListener("click",function(){for(var j=0;j<pb.length;j++)pb[j].classList.remove("active");this.classList.add("active");S.numPlayers=parseInt(this.dataset.count);});}
+  document.getElementById("startBtn").addEventListener("click",function(){startG(S.numPlayers);});
+  D.fb.addEventListener("click",fire);
+  D.fi.addEventListener("input",onIn);
+  D.fi.addEventListener("keydown",function(e){if(e.key==="Enter"){e.preventDefault();if(S.phase==="input"&&S.evalFn)fire();}});
+  D.hb2.addEventListener("click",function(){D.hm.classList.add("show");});
+  document.getElementById("closeHelpBtn").addEventListener("click",function(){D.hm.classList.remove("show");});
+  D.hm.addEventListener("click",function(e){if(e.target===D.hm)D.hm.classList.remove("show");});
+  document.getElementById("restartBtn").addEventListener("click",function(){D.re.classList.remove("show");D.ga.classList.add("hidden");D.ti.classList.remove("hidden");S.screen="title";});
+
+  // Derivative buttons
+  var dbs=document.querySelectorAll(".deriv-btn");
+  for(var i=0;i<dbs.length;i++){
+    dbs[i].addEventListener("click",function(){
+      if(S.phase!=="input")return;
+      for(var j=0;j<dbs.length;j++)dbs[j].classList.remove("active");
+      this.classList.add("active");
+      S.derivMode=parseInt(this.dataset.d);
+      // Re-render with new derivative mode
+      render();
+    });
+  }
+
+  // Resize
+  var rt=null;
+  window.addEventListener("resize",function(){clearTimeout(rt);rt=setTimeout(function(){resizeC();render();},100);});
+  window.addEventListener("orientationchange",function(){setTimeout(function(){resizeC();render();},400);});
+}
+
+// ===== INIT =====
+function init(){iD();bindE();S.numPlayers=2;}
+if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",init);}else{init();}
+</script>
+</body></html>
